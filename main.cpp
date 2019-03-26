@@ -216,6 +216,7 @@ void driveAllWaitCar()
 						{
 							ans_map.erase(car_id);
 							//这个车到达终点结束
+							roadline.waitqueue.pop_front();
 							continue;
 						}
 						int road_next_id = ans->path[ans->pi + 1];
@@ -244,6 +245,7 @@ void driveAllWaitCar()
 									ans->pos = min(ans->pos, ans_map[roadline_next.car_id[0]]->pos - 1);
 								}
 								dst_state[oi].push_back(d);
+								roadline.waitqueue.pop_front();
 							}
 							else
 								break;
@@ -280,6 +282,7 @@ void driveAllWaitCar()
 										ans->pos = min(ans->pos, ans_map[roadline_next.car_id[0]]->pos - 1);
 									}
 									dst_state[oi].push_back(d);
+									roadline.waitqueue.pop_front();
 								}
 							}
 							else
@@ -317,6 +320,7 @@ void driveAllWaitCar()
 										ans->pos = min(ans->pos, ans_map[roadline_next.car_id[0]]->pos - 1);
 									}
 									dst_state[oi].push_back(d);
+									roadline.waitqueue.pop_front();
 								}
 							}
 							else
