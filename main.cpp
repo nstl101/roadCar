@@ -220,33 +220,44 @@ void driveAllWaitCar()
 						auto ans = ans_map[car_id];
 						if (ans->pi == ans->path.size() - 1)
 							continue;
-						int road_next = ans->path[ans->pi + 1];
+						int road_next_id = ans->path[ans->pi + 1];
 
 						int order_old = -1, order_new = -1;
 						for (int i = 0; i < 4; ++i)
 						{
 							if (cross->RoadId[i] == road_from->id) order_old = i;
-							if (cross->RoadId[i] == road_next) order_new = i;
+							if (cross->RoadId[i] == road_next_id) order_new = i;
 						}
 						int d = getOrder(order_old, order_new);
 
 						if (d == 3)
 						{
-							if (canPlace(road_next, cross_id))
+							int ret = canPlace(road_next_id, cross_id);
+							if (ret != -1)
 							{
-
+								auto road_next = road_map[road_next_id];
+								ans->pi++;
+								auto roadline_next = road_next->lines[ret];
+								auto car = car_map[car_id];
+								ans->pos = min(road_next->maxSpeed, car->maxSpeed - (road_from->len - ans->pos));
+								if (!roadline_next.car_id.empty())
+								{
+									ans->pos = min(ans->pos, ans_map[roadline_next.car_id[0]]->pos - 1);
+								}
 							}
 						}
 						else if (d == 2)
 						{
-							if (canPlace(road_next, cross_id))
+							int ret = canPlace(road_next_id, cross_id);
+							if (ret != -1)
 							{
 
 							}
 						}
 						else if (d == 1)
 						{
-							if (canPlace(road_next, cross_id))
+							int ret = canPlace(road_next_id, cross_id);
+							if (ret != -1)
 							{
 
 							}
