@@ -1,4 +1,4 @@
-﻿//#include "bits/stdc++.h"
+//#include "bits/stdc++.h"
 #include <set>
 #include <string>
 #include <map>
@@ -8,7 +8,7 @@
 #include <vector>
 #include <iostream>
 #include <string>
-
+#include <list>
 using namespace std;
 
 enum {
@@ -19,7 +19,7 @@ enum {
 class RoadLine {
 public:
 	int len, st, ed;
-	vector<int> waitqueue;
+	list<int> waitqueue;
 	vector<int> car_id;
 };
 
@@ -44,7 +44,7 @@ public:
 	vector<int> RoadId, Order;
 	vector<pair<int, int>> waitqueue;	//car_id, left_dist
 
-	Cross() :RoadId(4), Order(4){}
+	Cross() :RoadId(4), Order(4) {}
 };
 
 
@@ -77,6 +77,7 @@ map<int, Car *> car_map;
 map<int, Road *> road_map;
 map<int, Cross *> cross_map;
 map<int, AnsPath *> ans_map;
+map<pair<int, int>, int> road_cross;
 
 vector<Car> cars;
 vector<Road> roads;
@@ -101,20 +102,34 @@ void driveAllCarJustOnRoadToEndState()
 				auto car = car_map[car_id];
 				int car_speed = car->maxSpeed;
 				int speed = min(maxSpeed, car_speed);
-
 				int st = line.st, ed = line.ed;
+
+				auto ans = ans_map[car_id];
 
 				int maxlen = INT_MAX;
 
 				if (car->pos + speed >= len)
 				{
 					//进入路口
-					int left_dist = min(road_map[ed]->maxSpeed, car-maxSpeed - (len - car->pos));
-					cross_map[ed]->waitqueue.push_back({ car_id, left_dist });
-					//line.waitqueue.push_back(car_id);
-					maxlen = car->pos;
-					wait = true;
-					car->state = WAIT;
+					int left_dist = min(road_map[ed]->maxSpeed, car->maxSpeed - (len - car->pos));
+
+					if (ans->pi + 1 < ans->path.size())	//还有道路没走完
+					{
+
+						int road_next = ans->path[ans->pi + 1];
+
+						int target_corssid = road_cross[{id, road_next}];
+
+						cross_map[target_corssid]->waitqueue.push_back({ car_id, left_dist });
+						//line.waitqueue.push_back(car_id);
+						maxlen = car->pos;
+						wait = true;
+						car->state = WAIT;
+					}
+					else //路走完了
+					{
+
+					}
 				}
 				else if (car->pos + speed >= maxlen)
 				{
@@ -151,95 +166,96 @@ int getOrder(int old_road, int new_road)
 	else return 1;	//右转
 }
 
-bool driveCross(int car_id)
+int canPlace(int roadid, int st)
+{
+	auto road = road_map[roadid];
+	for (int i = 0; i < road->lines.size(); ++i)
+	{
+		auto &roadline = road->lines[i];
+		if (roadline.st == st)
+		{
+			if (roadline.car_id.empty())
+			{
+				return i;
+			}
+			else
+			{
+				auto car_id = roadline.car_id[0];
+				auto ans = ans_map[car_id];
+				if (ans->pos > 0)
+				{
+					return i;
+				}
+			}
+		}
+	}
+	return -1;
+}
+
+bool judgeGo()
 {
 
 }
 
 void driveAllWaitCar()
 {
-	for (auto &e : cross_map)
+	for (auto &e : cross_map) // for small to big by corss_ids
 	{
 		auto cross_id = e.first;
 		auto cross = e.second;
 		auto &RoadId = cross->RoadId;
 		while (true)
 		{
-			vector<vector<int>> dst_state(4, vector<int>(0));
+			vector<vector<int>> dst_state(4);
 			for (auto oi : cross->Order)
 			{
 				if (oi == -1) continue;
 				int roadid = cross->RoadId[oi];
 				auto road_from = road_map[roadid];
-				vector<pair<int, int>> dst_state(4);
 				for (auto &roadline : road_from->lines)
 				{
-					if (roadline.ed != cross_id) continue;
-					for (auto &car_id : roadline.waitqueue)
+					if (roadline.ed == cross_id && !roadline.waitqueue.empty())
 					{
-						if (ans_map[car_id]->pos == ans_map[car_id]->path.size() - 1)
-						{
-							//todo
+						auto car_id = roadline.waitqueue.front();
+						auto ans = ans_map[car_id];
+						if (ans->pi == ans->path.size() - 1)
 							continue;
-						}
-						auto ans_pos = ans_map[car_id];
-						auto road_to_id = ans_pos->path[ans_pos->pi + 1];
+						int road_next = ans->path[ans->pi + 1];
 
-						int road_old, road_new;
+						int order_old = -1, order_new = -1;
 						for (int i = 0; i < 4; ++i)
 						{
-							if (road_from->id == cross->RoadId[i]) road_old = i;
-							if (road_to_id == cross->RoadId[i]) road_new = i;
+							if (cross->RoadId[i] == road_from->id) order_old = i;
+							if (cross->RoadId[i] == road_next) order_new = i;
 						}
-						int d = getOrder(road_old, road_new);
-						if (d == 3)	//直行
-						{
-							dst_state[oi]
-						}
-						else if (d == 2)	//左转
-						{
-							
-						}
-						else // 右转
-						{
+						int d = getOrder(order_old, order_new);
 
+						if (d == 3)
+						{
+							if (canPlace(road_next, cross_id))
+							{
+
+							}
+						}
+						else if (d == 2)
+						{
+							if (canPlace(road_next, cross_id))
+							{
+
+							}
+						}
+						else if (d == 1)
+						{
+							if (canPlace(road_next, cross_id))
+							{
+
+							}
 						}
 					}
 				}
 			}
 		}
 
-		for (auto &p : cross->waitqueue)
-		{
-			int car_id = p.first;
-			int left_dist = p.second;
-			auto ans_pos = ans_map[car_id];
-			auto pi = ans_pos->pi;
-			if (pi == ans_pos->path.size() - 1)
-			{
-				//todo
-				continue;
-			}
-			int new_roadid = ans_pos->pi + 1;
-			int old_roadid = ans_pos->pi;
-			int new_order, old_order;
-			for (int i = 0; i < 4; ++i)
-			{
-				if (cross->RoadId[i] == new_roadid)
-				{
-					new_order = i;
-					break;
-				}
-			}
-			for (int i = 0; i < 4; ++i)
-			{
-				if (cross->RoadId[i] == old_roadid)
-				{
-					old_order = i;
-					break;
-				}
-			}
-		}
 	}
 }
 
@@ -278,7 +294,7 @@ int main(int argc, char *argv[])
 		char c;
 		Road road;
 		int cnt;
-		ss >> c >> road.id >> c >> road.len >> c >> road.maxSpeed >> c >> road.cnt >> c >> road.st >> c >> road.st >> c >> road.f;
+		ss >> c >> road.id >> c >> road.len >> c >> road.maxSpeed >> c >> road.cnt >> c >> road.st >> c >> road.ed >> c >> road.f;
 		road.lines = vector<RoadLine>(cnt);
 		for (auto &e : road.lines)
 		{
@@ -315,6 +331,16 @@ int main(int argc, char *argv[])
 			ss >> cros.RoadId[i];
 			cros.Order[i] = i;
 		}
+
+		for (int i = 0; i < 4; ++i)
+		{
+			for (int j = i + 1; j < 4; ++j)
+			{
+				if (cros.RoadId[i] != -1 && cros.RoadId[j] != -1)
+					road_cross[{cros.RoadId[i], cros.RoadId[j]}] = cros.id;
+			}
+		}
+
 		cross.push_back(cros);
 		cross_map[cros.id] = &cros;
 		auto cmp = [&](int i, int j) {
