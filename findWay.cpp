@@ -60,5 +60,6 @@ vector<int> findWay(int st, int ed, int speed, map<int, Cross *> &crossMap, map<
 		ans.insert(ans.begin(), curCrossId);
 		curCrossId = jumpList[curCrossId];
 	}
+	ans.insert(ans.begin(), curCrossId);
 	return ans;
 }
