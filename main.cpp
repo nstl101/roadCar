@@ -101,7 +101,7 @@ void driveAllCarJustOnRoadToEndState()
 
 				int maxlen = INT_MAX;
 
-				if (car->pos + speed >= len)
+				if (car->pos + speed >= len)//肖：这里的逻辑是从0到len - 1表示车辆在道路上的位置，应为1到len(与路口speed统一比较)
 				{
 					//进入路口
 					int left_dist = min(road_map[ed]->maxSpeed, car->maxSpeed - (len - car->pos));
@@ -191,7 +191,7 @@ int canPlace(int roadid, int st)//肖：是否应该增加返回的状态码？�
 	return -1;
 }
 /*肖：添加函数getFirstWaitCar用于取得指定Road上的第一优先级等待车辆*/
-int getFirstWaitCar(int roadId， int ed){
+int getFirstWaitCar(int roadId，int ed){
 	auto road = road_map[roadId];
 	int retId = -1;
 	int maxPos = -1;
@@ -209,7 +209,31 @@ int getFirstWaitCar(int roadId， int ed){
 	}
 	return retId;
 }
-
+/*肖：添加updateRoadLine用于在路口等待车辆进入终止状态后对其后roadLine上的车辆状态进行刷新*/
+void updateRoadLine(int roadId, int lineId){
+	auto road = road_map[roadId];
+	auto roadLine = road.lines[lineId];
+	auto waitqueue = roadline.waitqueue;
+	int maxPos = INT_MAX;
+	while(waitqueue.size() != 0){
+		auto carId = waitqueue.front();
+		auto car = car_map[carId];
+		int speed = min(road.maxSpeed, car.maxSpeed);
+		if(car.pos + speed > road.len && car.pos + speed < maxPos){
+			return;
+		}else if(car.pos + speed < maxPos){
+			car.pos = car.pos + speed;
+			ans_map[carId].pos = car.pos;
+			maxPos = car.pos;
+			waitqueue.erase(carId);
+		}else{
+			car.pos = maxPos - 1;
+			ans_map[carId].pos = car.pos;
+			maxPos = car.pos;
+			waitqueue.erase(carId);
+		}
+	}
+}
 void driveAllWaitCar()
 {
 	for (auto &e : cross_map) // for small to big by corss_ids
