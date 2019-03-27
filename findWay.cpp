@@ -1,3 +1,17 @@
+//#include "bits/stdc++.h"
+#include <set>
+#include <string>
+#include <map>
+#include <sstream>
+#include <fstream>
+#include <algorithm>
+#include <vector>
+#include <iostream>
+#include <string>
+#include <list>
+using namespace std;
+
+
 //检测当前路口是否已经找到最短路径
 bool crossChecked(int i, vector<int> &checkedCross){
 	for(int j = 0; j < checkedCross.size(); ++j){
