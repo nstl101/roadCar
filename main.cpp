@@ -1,4 +1,4 @@
-//#include "bits/stdc++.h"
+﻿//#include "bits/stdc++.h"
 #include <set>
 #include <string>
 #include <map>
@@ -87,7 +87,7 @@ void driveAllCarJustOnRoadToEndState()
 		//车道
 		for (auto &line : road.lines)
 		{
-			auto &cars = line.car_id;
+			auto &cars = line.car_id;//肖：如果为双向车道这样遍历是否会发生一边从后往前调度另一边从前往后（应该都得从前往后调度）？
 			bool wait = false;
 			for (int i = cars.size() - 1; i >= 0; --i)
 			{
@@ -113,7 +113,7 @@ void driveAllCarJustOnRoadToEndState()
 
 						int target_corssid = road_cross[{id, road_next}];
 
-						cross_map[target_corssid]->waitqueue.push_back({car_id, left_dist});
+						cross_map[target_corssid]->waitqueue.push_back({car_id, left_dist});//肖：cross处是否有必要单独存放等待队列？（可否统一存放到line中以方便路口调度时查询）
 						//line.waitqueue.push_back(car_id);
 						maxlen = car->pos;
 						wait = true;
@@ -142,6 +142,7 @@ void driveAllCarJustOnRoadToEndState()
 				{
 					car->pos += speed;
 					maxlen = car->pos;
+					car->state = END/*肖添加*/
 					wait = false;
 				}
 			}
@@ -160,7 +161,7 @@ int getOrder(int old_road, int new_road)
 }
 
 //从原路口st到新的路口 roadid 能否放下去
-int canPlace(int roadid, int st)
+int canPlace(int roadid, int st)//肖：是否应该增加返回的状态码？如果存在等待和道路已满均返回-1会不会造成“道路满了但路口等待车辆仍然一直等待”的情况？
 {
 	auto road = road_map[roadid];
 	for (int i = 0; i < road->lines.size(); ++i)
@@ -189,6 +190,25 @@ int canPlace(int roadid, int st)
 	}
 	return -1;
 }
+/*肖：添加函数getFirstWaitCar用于取得指定Road上的第一优先级等待车辆*/
+int getFirstWaitCar(int roadId， int ed){
+	auto road = road_map[roadId];
+	int retId = -1;
+	int maxPos = -1;
+	for(int i = 0; i < road->lines.size(); ++i){
+		auto &roadline = road->lines[i];
+		if(roadline.ed != ed){
+			continue;
+		}
+		auto carId = roadline.waitqueue.front();
+		auto car = car_map[carId];
+		if(car->pos > maxPos){
+			retId = carId;
+			maxPos = car->pos;
+		}
+	}
+	return retId;
+}
 
 void driveAllWaitCar()
 {
@@ -210,7 +230,8 @@ void driveAllWaitCar()
 				{
 					if (roadline.ed == cross_id && !roadline.waitqueue.empty())
 					{
-						auto car_id = roadline.waitqueue.front();
+						auto car_id = roadline.waitqueue.front();//肖：此时得到的car_id为当前Line的第一等待车辆，并不一定是Road上的第一等待车辆
+						//auto car_id = getFirstWaitCar(roadid, cross_id);仅供参考
 						auto ans = ans_map[car_id];
 						if (ans->pi == ans->path.size() - 1)
 						{
@@ -239,7 +260,7 @@ void driveAllWaitCar()
 								ans->pi++;
 								auto roadline_next = road_next->lines[ret];
 								auto car = car_map[car_id];
-								ans->pos = min(road_next->maxSpeed, car->maxSpeed - (road_from->len - ans->pos));
+								ans->pos = min(road_next->maxSpeed, car->maxSpeed - (road_from->len - ans->pos));//肖：ans->pos与car->pos应该同步更新吧？要不统一只用一个？
 								if (!roadline_next.car_id.empty())
 								{
 									ans->pos = min(ans->pos, ans_map[roadline_next.car_id[0]]->pos - 1);
@@ -256,7 +277,7 @@ void driveAllWaitCar()
 							if (ret != -1)
 							{
 								bool f = false;
-								for (int e : dst_state[order_new])
+								for (int e : dst_state[order_new])//肖：这里得到的应该是另一道路上存在直行等待车辆便break，但根据任务书的意思似乎只用去看其他道路上第一优先级的等待车辆是否直行即可
 								{
 									if (e == 3)
 									{
