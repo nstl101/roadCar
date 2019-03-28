@@ -1,4 +1,4 @@
-﻿//#include "bits/stdc++.h"
+//#include "bits/stdc++.h"
 #include <set>
 #include <assert.h>
 #include <string>
@@ -378,7 +378,7 @@ bool driveAllWaitCar()
 						}
 						int ret = canPlace(road_next_id, cross_id, car_map[car_id]->left_dist);
 						if(ret == -2){
-							ar_map[car_id]->state = END;
+							car_map[car_id]->state = END;
 							car_map[car_id]->pos = roadline.len;
 							ans->pos = roadline.len;
 							roadline.waitqueue.pop_front();
@@ -392,7 +392,6 @@ bool driveAllWaitCar()
 							//调用goCross更新道路车辆信息
 							roadline.waitqueue.pop_front();
 							updateRoadLine(roadline);
-							roadline.waitqueue.pop_front();
 							hasCarDrive = true;
 						}else{
 							roadWait = true;
