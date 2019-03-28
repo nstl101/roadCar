@@ -1,6 +1,7 @@
 #ifndef __COMMON__H
 #define __COMMON__H
 #include <set>
+#include <queue>
 #include <assert.h>
 #include <string>
 #include <map>
@@ -11,8 +12,7 @@
 #include <iostream>
 #include <string>
 #include <list>
-
-#include "findWay.cpp"
+#include <queue>
 
 using namespace std;
 
@@ -28,7 +28,8 @@ class RoadLine
   public:
 	int len, st, ed;
 	list<int> waitqueue;
-	vector<int> car_id;
+	list<int> car_id;
+	int fathRoad;
 };
 
 class Road
@@ -48,14 +49,25 @@ class Car
 	//增加left_dist用于路口调度判断
 	int pos = 0;
 	int state = 0;
+	bool operator < (const Car & rhs) const
+	{
+		if (time > rhs.time) return true;
+		return id > rhs.id;
+	}
 };
+
+auto cmp = [](const Car * lhs, const Car *rhs){
+	return *lhs < *rhs;
+};
+
+// priority_queue<Car *, vector<Car *>, decltype(cmp)> CarPQ(cmp);
+deque<Car *> CarPQ;
 
 class Cross
 {
   public:
 	int id;
 	vector<int> RoadId, Order;
-	vector<pair<int, int>> waitqueue; //car_id, left_dist
 
 	Cross() : RoadId(4), Order(4) {}
 };
@@ -63,7 +75,7 @@ class Cross
 class AnsPath
 {
   public:
-	int car_id, st;
+	int car_id, st;	//start_time
 	vector<int> path;
 	int pi = 0, pos = 0;
 };

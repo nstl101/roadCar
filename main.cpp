@@ -1,8 +1,9 @@
 ﻿#include "common.h"
 using namespace std;
 
-void driveAllCarJustOnRoadToEndState()
+bool driveAllCarJustOnRoadToEndState()
 {
+	bool hasWaitCar =false;
 	for (auto &road : roads)
 	{
 		int id = road.id, maxSpeed = road.maxSpeed;
@@ -13,9 +14,9 @@ void driveAllCarJustOnRoadToEndState()
 		{
 			auto &cars = line.car_id; 
 			bool wait = false;
-			for (int i = cars.size() - 1; i >= 0; --i)
+			for (auto car_id : cars)
 			{
-				int car_id = cars[i];
+				// int car_id = cars[i];
 				auto car = car_map[car_id];
 				int car_speed = car->maxSpeed;
 				int speed = min(maxSpeed, car_speed);
@@ -44,6 +45,7 @@ void driveAllCarJustOnRoadToEndState()
 						maxlen = car->pos;
 						wait = true;
 						car->state = WAIT;
+						hasWaitCar = true;
 					}
 					else //路走完了
 					{
@@ -56,6 +58,7 @@ void driveAllCarJustOnRoadToEndState()
 					{
 						line.waitqueue.push_back(car_id);
 						car->state = WAIT;
+						hasWaitCar = true;
 					}
 					else // 终止状态
 					{
@@ -75,6 +78,7 @@ void driveAllCarJustOnRoadToEndState()
 			}
 		}
 	}
+	return hasWaitCar;
 }
 
 int getOrder(Cross *cross, Car *car)
@@ -119,9 +123,9 @@ int canPlace(int roadid, int st, int left_dist) //肖：增加left_dist用于判
 			{
 				return i;
 			}
-			else if (car_map[roadline.car_id[0]]->state == END) //寻找第一个终止状态的车道
+			else if (car_map[roadline.car_id.front()]->state == END) //寻找第一个终止状态的车道
 			{
-				auto car_id = roadline.car_id[0];
+				auto car_id = roadline.car_id.front();
 				auto ans = ans_map[car_id];
 				if (ans->pos > 1)
 				{
@@ -130,7 +134,7 @@ int canPlace(int roadid, int st, int left_dist) //肖：增加left_dist用于判
 			}
 			else //肖：如果第一个车道的状态不是终止且小于等于前行距离 继续等待
 			{
-				auto car_id = roadline.car_id[0];
+				auto car_id = roadline.car_id.front();
 				auto ans = ans_map[car_id];
 				if(ans->pos > left_dist){
 					return i;//肖：道路前车为等待状态，但当前车辆不会到达这么远的距离，可以进入
@@ -167,12 +171,15 @@ int getFirstWaitCar(int roadId, int ed)
 /*肖：添加updateRoadLine用于在路口等待车辆进入终止状态后对其后roadLine上的车辆状态进行刷新*/
 void updateRoadLine(RoadLine &roadline)
 {
+	auto road = road_map[roadline.fathRoad];
 	auto waitqueue = roadline.waitqueue;
 	int maxPos = INT_MAX;
 	while (waitqueue.size() != 0)
 	{
 		auto carId = waitqueue.front();
 		auto car = car_map[carId];
+		auto ans = ans_map[car->id];
+
 		int speed = min(road->maxSpeed, car->maxSpeed);
 		if (car->pos + speed > road->len && car->pos + speed < maxPos)
 		{
@@ -195,6 +202,26 @@ void updateRoadLine(RoadLine &roadline)
 	}
 }
 
+void goCross(Car *car, int roadToId, int roadlineid)
+{
+	int car_id = car->id;
+	auto ans = ans_map[car_id];
+	auto road_next = road_map[roadToId];
+	ans->pi++;
+	auto roadline_next = road_next->lines[roadlineid];
+	auto car = car_map[car_id];
+	ans->pos = min(road_next->maxSpeed, car->maxSpeed);
+	car->pos = ans->pos;
+	//肖：增加对car->pos的刷新与ans->pos保持同步
+	if (!roadline_next.car_id.empty())
+	{
+		ans->pos = min(ans->pos, ans_map[roadline_next.car_id.front()]->pos - 1);
+		car->pos = ans->pos;
+	}
+	// hasCarDrive = true;
+	// roadline.waitqueue.pop_front();
+}
+
 void goCross(Car *car, int roadFromId, int roadToId, int roadlineid)
 {
 	int car_id = car->id;
@@ -209,7 +236,7 @@ void goCross(Car *car, int roadFromId, int roadToId, int roadlineid)
 	//肖：增加对car->pos的刷新与ans->pos保持同步
 	if (!roadline_next.car_id.empty())
 	{
-		ans->pos = min(ans->pos, ans_map[roadline_next.car_id[0]]->pos - 1);
+		ans->pos = min(ans->pos, ans_map[roadline_next.car_id.front()]->pos - 1);
 		car->pos = ans->pos;
 	}
 	// hasCarDrive = true;
@@ -245,7 +272,6 @@ bool driveAllWaitCar()
 		auto &RoadId = cross->RoadId;
 		while (true)
 		{
-
 			for (auto oi : cross->Order)
 			{
 				if (oi == -1)
@@ -273,7 +299,7 @@ bool driveAllWaitCar()
 							ans->pos = 0;
 							//这个车到达终点结束,将pi,pos置0.
 							roadline.waitqueue.pop_front();
-							roadline.car_id.erase(car_id);
+							roadline.car_id.pop_front();
 							//肖：同时更新roadline上的car_id信息
 							hasCarDrive = true;
 							updateRoadLine(roadline);
@@ -296,14 +322,14 @@ bool driveAllWaitCar()
 						}
 						int ret = canPlace(road_next_id, cross_id, car_map[car_id]->left_dist);
 						if(ret == -2){
-							ar_map[car_id]->state = END;
+							car_map[car_id]->state = END;
 							car_map[car_id]->pos = roadline.len;
 							ans->pos = roadline.len;
 							roadline.waitqueue.pop_front();
 							updateRoadLine(roadline);
 							break;
 						}else if(ret != -1){
-							auto roadline_next = road_next->lines[ret];
+							auto roadline_next = road_map[ans->path[ans->pi + 1]]->lines[ret];
 							auto car = car_map[car_id];
 							car_map[car_id]->state = END;
 							goCross(car, roadid, road_next_id, ret);
@@ -323,6 +349,91 @@ bool driveAllWaitCar()
 		}
 	}
 	return hasCarDrive;
+}
+
+bool driveCarInGarage(int now)
+{
+	while (!CarPQ.empty() && CarPQ.front()->time >= now)
+	{
+		auto car = CarPQ.front();
+		int car_id = car->id;
+		auto ans = ans_map[car_id];
+		CarPQ.pop_front();
+		int road_id = ans->path[0];
+		int road_line_id;
+		if ((road_line_id = canPlace(road_id, car->st, min(road_map[road_id]->maxSpeed, car->maxSpeed))) != -1)
+		{
+			goCross(car, road_id, road_line_id);
+		}
+		else return false;
+	}
+	return true;
+}
+
+void reset()
+{
+	for (auto &e : road_map)
+	{
+		auto &road = e.second;
+		for (auto &roadline : road->lines)
+		{
+			roadline.waitqueue.clear();
+			roadline.car_id.clear();
+		}
+	}
+
+	for (auto &e : car_map)
+	{
+		auto car = e.second;
+		car->pos = 0;
+		car->state = END;
+	}
+
+	for (auto &e : ans_map)
+	{
+		auto cross = e.second;
+		cross->pos = 0;
+		cross->pi = 0;
+	}
+}
+bool hasWaitCarRemain(){
+	for (auto &e : cross_map){
+		auto cross_id = e.first;
+		auto cross = e.second;
+		auto &RoadId = cross->RoadId;
+		for (auto oi : cross->Order){
+			if (oi == -1)
+					continue;
+			int roadid = cross->RoadId[oi];
+			auto road_from = road_map[roadid];
+			if(getFirstWaitCar(roadid, cross_id) != -1){
+				return true;
+			}
+		}
+	}
+	return false;
+}
+bool judge()
+{
+	int now = 0;
+	while (true)
+	{
+		bool hasWaitCar = driveAllCarJustOnRoadToEndState();
+		if(hasWaitCar){
+			bool canMove = true;
+			while(canMove){
+				canMove = driveAllWaitCar();
+				if(!canMove){
+					return false;
+				}else if(!hasWaitCarRemain()){
+					break;
+				}
+			}
+		}
+		driveCarInGarage(now);
+		now ++;
+	}
+	return true;
 }
 
 int main(int argc, char *argv[])
@@ -377,6 +488,7 @@ int main(int argc, char *argv[])
 				road.lines[i].len = road.len;
 				road.lines[i].st = road.ed;
 				road.lines[i].ed = road.st;
+				road.lines[i].fathRoad = road.id;
 			}
 			cnt *= 2;
 		}
@@ -437,45 +549,28 @@ int main(int argc, char *argv[])
 		ansPath.push_back(ans);
 		ans_map[ans.car_id] = &ans;
 	}
-	while (true)
+	vector<int> ans_time(ans_map.size());
+	auto it = ans_map.begin();
+	for (int i = 0; i < ans_map.size(); ++i, ++it)
 	{
-		break;
+		ans_time[i] = it->second->car_id;
 	}
 
-	//for (;;) {
-	//	while (/* all car in road run into end state */) {
-	//		foreach(roads) {
-	//			/* 调整所有道路上在道路上的车辆，让道路上车辆前进，只要不出路口且可以到达终止状态的车辆
-	//		   * 分别标记出来等待的车辆（要出路口的车辆，或者因为要出路口的车辆阻挡而不能前进的车辆）
-	//		   * 和终止状态的车辆（在该车道内可以经过这一次调度可以行驶其最大可行驶距离的车辆）*/
-	//			driveAllCarJustOnRoadToEndState(allChannle);/* 对所有车道进行调整 */
-
-	//			/* driveAllCarJustOnRoadToEndState该处理内的算法与性能自行考虑 */
-	//		}
-	//	}
-
-	//	while (/* all car in road run into end state */) {
-	//		/* driveAllWaitCar() */
-	//		foreach(crosses) {
-	//			foreach(roads) {
-	//				Direction dir = getDirection();
-	//				Car car = getCarFromRoad(road, dir);
-	//				if (conflict) {
-	//					break;
-	//				}
-
-	//				channle = car.getChannel();
-	//				car.moveToNextRoad();
-
-	//				/* driveAllCarJustOnRoadToEndState该处理内的算法与性能自行考虑 */
-	//				driveAllCarJustOnRoadToEndState(channel);
-	//			}
-	//		}
-	//	}
-
-	//	/* 车库中的车辆上路行驶 */
-	//	driveCarInGarage();
-	//}
-
+	auto cmp = [&](int lhs, int rhs){
+		auto l = ans_map[lhs], r = ans_map[rhs];
+		int car_id_l = l->car_id, car_id_r = r->car_id;
+		return *car_map[car_id_l] < *car_map[car_id_r];
+	};
+	sort(ans_time.begin(), ans_time.end(), cmp);
+	for(int i = 0; i < ans_time.size(); ++i){
+		CarPQ.push_back(car_map[ans_time[i]]);
+		while(!judge()){
+			reset();
+			CarPQ.pop_back();
+			++ans_map[ans_time[i]]->st;
+			++car_map[ans_time[i]]->time;
+			CarPQ.push_back(car_map[ans_time[i]]);
+		}
+	}
 	return 0;
 }
