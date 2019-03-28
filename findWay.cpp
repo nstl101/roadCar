@@ -1,16 +1,5 @@
-//#include "bits/stdc++.h"
-#include <set>
-#include <string>
-#include <map>
-#include <sstream>
-#include <fstream>
-#include <algorithm>
-#include <vector>
-#include <iostream>
-#include <string>
-#include <list>
+#include "common.h"
 using namespace std;
-
 
 //检测当前路口是否已经找到最短路径
 bool crossChecked(int i, vector<int> &checkedCross){
@@ -31,13 +20,14 @@ vector<int> findWay(int st, int ed, int speed, map<int, Cross *> &crossMap, map<
 		auto &RoadId = cross->RoadId;
 		searchMap[cross_id][cross_id] = 0;
 		for(int i = 0; i < RoadId.size(); ++i){
+			if (RoadId[i] == -1) continue;
 			auto road = roadMap[RoadId[i]];
-			if(road.st == cross_id){
-				int trueSpeed = min(road.maxSpeed, speed);
-				searchMap[cross_id][road.ed] = road.len / trueSpeed;
-			}else if(road.f){
-				int trueSpeed = min(road.maxSpeed, speed);
-				searchMap[cross_id][road.st] = road.len / trueSpeed;
+			if(road->st == cross_id){
+				int trueSpeed = min(road->maxSpeed, speed);
+				searchMap[cross_id][road->ed] = road->len / trueSpeed;
+			}else if(road->f){
+				int trueSpeed = min(road->maxSpeed, speed);
+				searchMap[cross_id][road->st] = road->len / trueSpeed;
 			}
 		}
 	}
@@ -67,7 +57,7 @@ vector<int> findWay(int st, int ed, int speed, map<int, Cross *> &crossMap, map<
 				curMinDistance = searchMap[st][i];
 			}
 		}
-		crossChecked.push_back(shortestId);
+		checkedCross.push_back(shortestId);
 	}
 	int curCrossId = ed;
 	while(curCrossId != st){
@@ -75,5 +65,28 @@ vector<int> findWay(int st, int ed, int speed, map<int, Cross *> &crossMap, map<
 		curCrossId = jumpList[curCrossId];
 	}
 	ans.insert(ans.begin(), curCrossId);
-	return ans;
+	vector<int> ans_road;
+	for (int i = 0; i < ans.size(); ++i)
+	{
+		int cross_id = ans[i];
+		auto cross = crossMap[cross_id];
+		if (i + 1 < ans.size())
+		{
+			int cross_next = ans[i + 1];
+			int tar = -1;
+			for (auto &roadid : cross->RoadId)
+			{
+				if (roadid != -1)
+				{
+					if (roadMap[roadid]->ed == cross_next)
+					{
+						tar = cross_next;
+						break;
+					}
+				}
+			}
+			ans_road.push_back(tar);
+		}
+	}
+	return ans_road;
 }
