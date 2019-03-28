@@ -42,6 +42,8 @@ class Car
 {
   public:
 	int id, st, dst, maxSpeed, time;
+	int left_dist;
+	//增加left_dist用于路口调度判断
 	int pos = 0;
 	int state = 0;
 };
@@ -91,7 +93,7 @@ void driveAllCarJustOnRoadToEndState()
 		//车道
 		for (auto &line : road.lines)
 		{
-			auto &cars = line.car_id; //肖：如果为双向车道这样遍历是否会发生一边从后往前调度另一边从前往后（应该都得从前往后调度）？
+			auto &cars = line.car_id; 
 			bool wait = false;
 			for (int i = cars.size() - 1; i >= 0; --i)
 			{
@@ -105,7 +107,7 @@ void driveAllCarJustOnRoadToEndState()
 
 				int maxlen = INT_MAX;
 
-				if (car->pos + speed >= len) //肖：这里的逻辑是从0到len - 1表示车辆在道路上的位置，应为1到len(与路口speed统一比较)
+				if (car->pos + speed > len)
 				{
 					//进入路口
 					int left_dist = min(road_map[ed]->maxSpeed, car->maxSpeed - (len - car->pos));
@@ -117,8 +119,10 @@ void driveAllCarJustOnRoadToEndState()
 
 						int target_corssid = road_cross[{id, road_next}];
 
-						cross_map[target_corssid]->waitqueue.push_back({car_id, left_dist}); //肖：cross处是否有必要单独存放等待队列？（可否统一存放到line中以方便路口调度时查询）
-						//line.waitqueue.push_back(car_id);
+						//cross_map[target_corssid]->waitqueue.push_back({car_id, left_dist}); 
+						car->left_dist = left_dist;
+						line.waitqueue.push_back(car_id);
+						//肖：我改成了用line存放，路口调度统一用这个
 						maxlen = car->pos;
 						wait = true;
 						car->state = WAIT;
@@ -185,7 +189,7 @@ int getOrder(int old_road, int new_road)
 }
 
 //从原路口st到新的路口 roadid 能否放下去
-int canPlace(int roadid, int st) //肖：是否应该增加返回的状态码？如果存在等待和道路已满均返回-1会不会造成“道路满了但路口等待车辆仍然一直等待”的情况？
+int canPlace(int roadid, int st, int left_dist) //肖：增加left_dist用于判断是否需要等待前车，更改道路已满的返回值为-2
 {
 	auto road = road_map[roadid];
 	for (int i = 0; i < road->lines.size(); ++i)
@@ -201,18 +205,23 @@ int canPlace(int roadid, int st) //肖：是否应该增加返回的状态码？
 			{
 				auto car_id = roadline.car_id[0];
 				auto ans = ans_map[car_id];
-				if (ans->pos > 0)
+				if (ans->pos > 1)
 				{
 					return i;
 				}
 			}
-			else //如果第一个车道的状态不是终止的则 继续等待
+			else //肖：如果第一个车道的状态不是终止且小于等于前行距离 继续等待
 			{
+				auto car_id = roadline.car_id[0];
+				auto ans = ans_map[car_id];
+				if(ans->pos > left_dist){
+					return i;//肖：道路前车为等待状态，但当前车辆不会到达这么远的距离，可以进入
+				}
 				return -1;
 			}
 		}
 	}
-	return -1;
+	return -2;
 }
 /*肖：添加函数getFirstWaitCar用于取得指定Road上的第一优先级等待车辆*/
 int getFirstWaitCar(int roadId, int ed)
@@ -238,10 +247,8 @@ int getFirstWaitCar(int roadId, int ed)
 	return retId;
 }
 /*肖：添加updateRoadLine用于在路口等待车辆进入终止状态后对其后roadLine上的车辆状态进行刷新*/
-void updateRoadLine(int roadId, int lineId)
+void updateRoadLine(RoadLine &roadline)
 {
-	auto road = road_map[roadId];
-	auto roadline = road->lines[lineId];
 	auto waitqueue = roadline.waitqueue;
 	int maxPos = INT_MAX;
 	while (waitqueue.size() != 0)
@@ -270,31 +277,49 @@ void updateRoadLine(int roadId, int lineId)
 	}
 }
 
-bool goCross(Car *car, Cross *cross, int roadlineid)
+void goCross(Car *car, int roadFromId, int roadToId, int roadlineid)
 {
 	int car_id = car->id;
 	auto ans = ans_map[car_id];
-
-	auto road_from = road_map[ans->path[ans->pi]];
-	auto road_next_id = ans->path[ans->pi + 1];
-
-
-	auto road_next = road_map[road_next_id];
+	auto road_from = road_map[roadFromId];
+	auto road_next = road_map[roadToId];
 	ans->pi++;
 	auto roadline_next = road_next->lines[roadlineid];
 	auto car = car_map[car_id];
-	ans->pos = min(road_next->maxSpeed, car->maxSpeed - (road_from->len - ans->pos)); //肖：ans->pos与car->pos应该同步更新吧？要不统一只用一个？
+	ans->pos = min(road_next->maxSpeed, car->maxSpeed - (road_from->len - ans->pos));
+	car->pos = ans->pos;
+	//肖：增加对car->pos的刷新与ans->pos保持同步
 	if (!roadline_next.car_id.empty())
 	{
 		ans->pos = min(ans->pos, ans_map[roadline_next.car_id[0]]->pos - 1);
+		car->pos = ans->pos;
 	}
 	// hasCarDrive = true;
 	// roadline.waitqueue.pop_front();
-	return true;
 }
-
-void driveAllWaitCar()
+/*肖：添加hasConflict用于判断是否存在与其他道路上车辆冲突*/
+bool hasConflict(int curDirect, int oi, Cross *cross, int cross_id){
+	for (int i = 0; i < 4; ++i)
+	{
+		if (i == oi || cross->RoadId[i] == -1)
+			continue;
+		int roadid = cross->RoadId[i];
+		auto car_id = getFirstWaitCar(roadid, cross_id);
+		auto car = car_map[car_id];
+		auto ans = ans_map[car_id];
+		if (ans->pi == ans->path.size() - 1)
+			continue;
+		int d = getOrder(cross, car);
+		if (d < curDirect)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+bool driveAllWaitCar()
 {
+	bool hasCarDrive = false;
 	for (auto &e : cross_map) // for small to big by corss_ids
 	{
 		auto cross_id = e.first;
@@ -302,7 +327,6 @@ void driveAllWaitCar()
 		auto &RoadId = cross->RoadId;
 		while (true)
 		{
-			bool hasCarDrive = false;
 
 			for (auto oi : cross->Order)
 			{
@@ -310,19 +334,32 @@ void driveAllWaitCar()
 					continue;
 				int roadid = cross->RoadId[oi];
 				auto road_from = road_map[roadid];
+				bool roadWait = false;
+				while(!roadWait){
+					if(getFirstWaitCar(roadid, cross_id) == -1){
+						break;
+					}
 				for (auto &roadline : road_from->lines)
 				{
 					if (roadline.ed == cross_id && !roadline.waitqueue.empty())
 					{
-						//auto car_id = roadline.waitqueue.front();//肖：此时得到的car_id为当前Line的第一等待车辆，并不一定是Road上的第一等待车辆
-						auto car_id = getFirstWaitCar(roadid, cross_id); //仅供参考
+						auto car_id = getFirstWaitCar(roadid, cross_id);
+						if(car_id != roadline.waitqueue.front()){
+							continue;
+						}
+						//肖：增加判断car_id是否在当前road line上
 						auto ans = ans_map[car_id];
 						if (ans->pi == ans->path.size() - 1)
 						{
-							ans_map.erase(car_id);
-							//这个车到达终点结束
+							ans->pi = 0;
+							ans->pos = 0;
+							//这个车到达终点结束,将pi,pos置0.
 							roadline.waitqueue.pop_front();
+							roadline.car_id.erase(car_id);
+							//肖：同时更新roadline上的car_id信息
 							hasCarDrive = true;
+							updateRoadLine(roadline);
+							//肖：当车辆到达终点时更新road line后方车辆
 							continue;
 						}
 						int road_next_id = ans->path[ans->pi + 1];
@@ -335,115 +372,39 @@ void driveAllWaitCar()
 								order_new = i;
 						}
 						int d = getOrder(order_old, order_new);
-
-						if (d == 3) //直行
-						{
-							int ret = canPlace(road_next_id, cross_id);
-							if (ret != -1)
-							{
-								auto road_next = road_map[road_next_id];
-								ans->pi++;
-								auto roadline_next = road_next->lines[ret];
-								auto car = car_map[car_id];
-								ans->pos = min(road_next->maxSpeed, car->maxSpeed - (road_from->len - ans->pos)); //肖：ans->pos与car->pos应该同步更新吧？要不统一只用一个？
-								if (!roadline_next.car_id.empty())
-								{
-									ans->pos = min(ans->pos, ans_map[roadline_next.car_id[0]]->pos - 1);
-								}
-								hasCarDrive = true;
-								roadline.waitqueue.pop_front();
-							}
-							else
-								break;
+						if(hasConflict(d, oi, cross, cross_id)){
+							roadWait = true;
+							break;
 						}
-						else if (d == 2) //左转
-						{
-							int ret = canPlace(road_next_id, cross_id);
-							if (ret != -1)
-							{
-								bool f = false;
-								for (int i = 0; i < 4; ++i)
-								{
-									if (i == oi || cross->RoadId[i] == -1)
-										continue;
-									int roadid = cross->RoadId[i];
-									auto car_id = getFirstWaitCar(roadid, cross_id);
-									auto car = car_map[car_id];
-									auto ans = ans_map[car_id];
-									if (ans->pi == ans->path.size() - 1)
-										continue;
-									int d = getOrder(cross, car);
-									if (d == 3)
-									{
-										f = true;
-										break;
-									}
-								}
-								if (f)
-									break;
-
-								auto road_next = road_map[road_next_id];
-								ans->pi++;
-								auto roadline_next = road_next->lines[ret];
-								auto car = car_map[car_id];
-
-								ans->pos = min(road_next->maxSpeed, car->maxSpeed - (road_from->len - ans->pos));
-								if (!roadline_next.car_id.empty())
-								{
-									ans->pos = min(ans->pos, ans_map[roadline_next.car_id[0]]->pos - 1);
-								}
-								hasCarDrive = true;
-								roadline.waitqueue.pop_front();
-							}
-							else
-								break;
-						}
-						else if (d == 1) //右转
-						{
-							int ret = canPlace(road_next_id, cross_id);
-							if (ret != -1)
-							{
-								bool f = false;
-								for (int i = 0; i < 4; ++i)
-								{
-									if (i == oi || cross->RoadId[i] == -1)
-										continue;
-									int roadid = cross->RoadId[i];
-									auto car_id = getFirstWaitCar(roadid, cross_id);
-									auto car = car_map[car_id];
-									auto ans = ans_map[car_id];
-									if (ans->pi == ans->path.size() - 1)
-										continue;
-									int d = getOrder(cross, car);
-									if (d == 3 || d == 2)
-									{
-										f = true;
-										break;
-									}
-								}
-								if (f)
-									break;
-								auto road_next = road_map[road_next_id];
-								ans->pi++;
-								auto roadline_next = road_next->lines[ret];
-								auto car = car_map[car_id];
-
-								ans->pos = min(road_next->maxSpeed, car->maxSpeed - (road_from->len - ans->pos));
-								if (!roadline_next.car_id.empty())
-								{
-									ans->pos = min(ans->pos, ans_map[roadline_next.car_id[0]]->pos - 1);
-								}
-								roadline.waitqueue.pop_front();
-								hasCarDrive = true;
-							}
-							else
-								break;
+						int ret = canPlace(road_next_id, cross_id, car_map[car_id]->left_dist);
+						if(ret == -2){
+							ar_map[car_id]->state = END;
+							car_map[car_id]->pos = roadline.len;
+							ans->pos = roadline.len;
+							roadline.waitqueue.pop_front();
+							updateRoadLine(roadline);
+							break;
+						}else if(ret != -1){
+							auto roadline_next = road_next->lines[ret];
+							auto car = car_map[car_id];
+							car_map[car_id]->state = END;
+							goCross(car, roadid, road_next_id, ret);
+							//调用goCross更新道路车辆信息
+							roadline.waitqueue.pop_front();
+							updateRoadLine(roadline);
+							roadline.waitqueue.pop_front();
+							hasCarDrive = true;
+						}else{
+							roadWait = true;
+							break;
 						}
 					}
 				}
+			    }
 			}
 		}
 	}
+	return hasCarDrive;
 }
 
 int main(int argc, char *argv[])
