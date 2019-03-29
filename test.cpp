@@ -139,7 +139,6 @@ int canPlace(int roadid, int st, int left_dist) //肖：增加left_dist用于判
 			}
 			else //肖：如果第一个车道的状态不是终止且小于等于前行距离 继续等待
 			{
-				cout << car_map[roadline.car_id.back()]->state << " state" << endl;
 				auto car_id = roadline.car_id.back();
 				auto ans = ans_map[car_id];
 				if (ans->pos > left_dist) {
@@ -235,9 +234,9 @@ void goCross(Car * car, int roadToId, int roadlineid)
 	cout << "car_id" << car_id << " route" << car_map[car_id]->st;
 	for (int i = 0; i <= ans->pi; ++i)
 	{
-		cout << " -> " << ans->path[i] << " : " << roadlineid ;
+		cout << " -> " << ans->path[i];
 	}
-	cout << " cur pos " << car->pos << endl;
+	cout << " cur line " << roadlineid << " cur pos " << car->pos << endl;
 	// hasCarDrive = true;
 	// roadline.waitqueue.pop_front();
 }
@@ -262,9 +261,9 @@ void goCross(Car * car, int roadFromId, int roadToId, int roadlineid)
 	cout << "car_id"<< car_id<<" route"<< car_map[car_id]->st;
 	for (int i = 0; i <= ans->pi; ++i)
 	{
-		cout << " -> " << ans->path[i] << " : " << roadlineid;
+		cout << " -> " << ans->path[i];
 	}
-	cout <<" cur pos "<< car->pos << endl;
+	cout << " cur line " << roadlineid << " cur pos " << car->pos << endl;
 	// hasCarDrive = true;
 	// roadline.waitqueue.pop_front();
 }
