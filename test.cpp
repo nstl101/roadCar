@@ -70,6 +70,7 @@ bool driveAllCarJustOnRoadToEndState()
 						car->pos = maxlen - 1;
 						ans->pos = car->pos;
 						car->state = END;
+						cout << "car_id" << car->id << " move from " << road.id << " : " << car->pos - speed << " to" << car->pos<<endl;
 					}
 					maxlen = car->pos;
 				}
