@@ -70,7 +70,7 @@ bool driveAllCarJustOnRoadToEndState()
 						car->pos = maxlen - 1;
 						ans->pos = car->pos;
 						car->state = END;
-						cout << "car_id" << car->id << " move from " << road.id << " : " << car->pos - speed << " to" << car->pos<<endl;
+						cout << "car_id" << car->id << " move from " << road.id << " : " << car->pos - speed << " to" << car->pos << endl;
 					}
 					maxlen = car->pos;
 				}
@@ -178,11 +178,10 @@ int getFirstWaitCar(int roadId, int ed)
 	return retId;
 }
 /*肖：添加updateRoadLine用于在路口等待车辆进入终止状态后对其后roadLine上的车辆状态进行刷新*/
-void updateRoadLine(RoadLine & roadline)
+void updateRoadLine(RoadLine & roadline, int maxPos)
 {
 	auto road = road_map[roadline.fathRoad];
 	auto waitqueue = roadline.waitqueue;
-	int maxPos = INT_MAX;
 	while (waitqueue.size() != 0)
 	{
 		auto carId = waitqueue.front();
@@ -197,7 +196,7 @@ void updateRoadLine(RoadLine & roadline)
 		else if (car->pos + speed < maxPos)
 		{
 			car->pos = car->pos + speed;
-			ans_map[carId]->pos = car->pos;
+			ans->pos = car->pos;
 			car->state = END;
 			maxPos = car->pos;
 			waitqueue.pop_front();
@@ -208,14 +207,14 @@ void updateRoadLine(RoadLine & roadline)
 			cout << "car_id" << car->id << " move from" << road->id << " : " << car->pos << " to";
 			car->pos = maxPos - 1;
 			cout << car->pos << endl;
-			ans_map[carId]->pos = car->pos;
+			ans->pos = car->pos;
 			car->state = END;
 			maxPos = car->pos;
 			waitqueue.pop_front();
 		}
 	}
 }
-
+//用于调度从车库中出来的车辆
 void goCross(Car * car, int roadToId, int roadlineid)
 {
 	int car_id = car->id;
@@ -232,7 +231,7 @@ void goCross(Car * car, int roadToId, int roadlineid)
 		car->pos = ans->pos;
 	}
 	roadline_next.car_id.push_back(car_id);
-	cout << "car_id" << car_id << " route" << car_map[car_id]->st;
+	cout << "car_id" << car_id << " route " << car_map[car_id]->st;
 	for (int i = 0; i <= ans->pi; ++i)
 	{
 		cout << " -> " << ans->path[i];
@@ -246,7 +245,7 @@ void goCross(Car * car, int roadFromId, int roadToId, int roadlineid)
 {
 	int car_id = car->id;
 	auto ans = ans_map[car_id];
-	auto road_from = road_map[roadFromId];
+	auto& road_from = road_map[roadFromId];
 	auto& road_next = road_map[roadToId];
 	ans->pi++;
 	auto& roadline_next = road_next->lines[roadlineid];
@@ -334,7 +333,7 @@ bool driveAllWaitCar()
 							roadline.car_id.pop_front();
 							//肖：同时更新roadline上的car_id信息
 							hasCarDrive = true;
-							updateRoadLine(roadline);
+							updateRoadLine(roadline, INT_MAX);
 							//肖：当车辆到达终点时更新road line后方车辆
 							continue;
 						}
@@ -358,7 +357,7 @@ bool driveAllWaitCar()
 							car_map[car_id]->pos = roadline.len;
 							ans->pos = roadline.len;
 							roadline.waitqueue.pop_front();
-							updateRoadLine(roadline);
+							updateRoadLine(roadline, ans->pos);
 							hasCarDrive = true;
 							break;
 						}
@@ -370,7 +369,7 @@ bool driveAllWaitCar()
 							//调用goCross更新道路车辆信息
 							roadline.waitqueue.pop_front();
 							roadline.car_id.pop_front();
-							updateRoadLine(roadline);
+							updateRoadLine(roadline, INT_MAX);
 							hasCarDrive = true;
 						}
 						else {
