@@ -81,6 +81,7 @@ bool driveAllCarJustOnRoadToEndState()
 					car->state = END;
 					/*肖添加*/
 					wait = false;
+					cout << "car_id" << car->id << " move from" << road.id << " : " << car->pos - speed << " to" << car->pos<<endl;
 				}
 			}
 		}
@@ -197,13 +198,18 @@ void updateRoadLine(RoadLine & roadline)
 		{
 			car->pos = car->pos + speed;
 			ans_map[carId]->pos = car->pos;
+			car->state = END;
 			maxPos = car->pos;
 			waitqueue.pop_front();
+			cout << "car_id" << car->id << " move from" << road->id << " : " << car->pos - speed << " to" << car->pos << endl;
 		}
 		else
 		{
+			cout << "car_id" << car->id << " move from" << road->id << " : " << car->pos << " to";
 			car->pos = maxPos - 1;
+			cout << car->pos << endl;
 			ans_map[carId]->pos = car->pos;
+			car->state = END;
 			maxPos = car->pos;
 			waitqueue.pop_front();
 		}
@@ -226,6 +232,12 @@ void goCross(Car * car, int roadToId, int roadlineid)
 		car->pos = ans->pos;
 	}
 	roadline_next.car_id.push_back(car_id);
+	cout << "car_id" << car_id << " route" << car_map[car_id]->st;
+	for (int i = 0; i <= ans->pi; ++i)
+	{
+		cout << " -> " << ans->path[i] << " : " << roadlineid << ":" << car->pos;
+	}
+	cout << endl;
 	// hasCarDrive = true;
 	// roadline.waitqueue.pop_front();
 }
@@ -247,6 +259,12 @@ void goCross(Car * car, int roadFromId, int roadToId, int roadlineid)
 		car->pos = ans->pos;
 	}
 	roadline_next.car_id.push_back(car_id);
+	cout << "car_id"<< car_id<<" route"<< car_map[car_id]->st;
+	for (int i = 0; i <= ans->pi; ++i)
+	{
+		cout << " -> " << ans->path[i] << " : " << roadlineid <<":"<< car->pos;
+	}
+	cout << endl;
 	// hasCarDrive = true;
 	// roadline.waitqueue.pop_front();
 }
@@ -379,7 +397,6 @@ bool driveCarInGarage(int now)
 		}
 		else
 		{
-			cout << CarPQ.size() << " " << CarPQ.front()->id << " " << CarPQ.front()->time << endl;
 			auto car = CarPQ.front();
 			int car_id = car->id;
 			auto ans = ans_map[car_id];
@@ -388,7 +405,6 @@ bool driveCarInGarage(int now)
 			int road_line_id;
 			if ((road_line_id = canPlace(road_id, car->st, min(road_map[road_id]->maxSpeed, car->maxSpeed))) != -2)
 			{
-				cout << road_line_id << endl;
 				goCross(car, road_id, road_line_id);
 			}
 			else return false;
@@ -466,6 +482,7 @@ bool judge()
 	int now = 0;
 	while (true)
 	{
+		cout << "time" << now << endl;
 		bool hasWaitCar = driveAllCarJustOnRoadToEndState();
 		if (hasWaitCar) {
 			bool canMove = true;
@@ -485,7 +502,6 @@ bool judge()
 		}
 		if (!driveCarInGarage(now))
 		{
-			cout << "can not place" << endl;
 			return false;
 		}
 		now++;
@@ -629,7 +645,7 @@ int main(int argc, char* argv[])
 		CarPQ.push_back(car_map[ans_time[i]]);
 		if (i < 3)continue;//测试用
 		auto *old = new deque<Car*>(CarPQ);
-		cout << CarPQ.size() << endl;
+		cout <<"CarPQ size :"<< CarPQ.size() << endl;
 		while (!judge()) {
 			reset();
 			CarPQ = *old;
