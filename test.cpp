@@ -15,6 +15,7 @@ bool driveAllCarJustOnRoadToEndState()
 		{
 			auto& cars = line.car_id;
 			bool wait = false;
+			int maxlen = INT_MAX;
 			for (auto car_id : cars)
 			{
 				// int car_id = cars[i];
@@ -24,8 +25,6 @@ bool driveAllCarJustOnRoadToEndState()
 				int st = line.st, ed = line.ed;
 
 				auto ans = ans_map[car_id];
-
-				int maxlen = INT_MAX;
 
 				if (car->pos + speed > len)
 				{
@@ -614,7 +613,7 @@ int main(int argc, char* argv[])
 		ss >> ans->car_id;
 		ss >> c;
 		ss >> ans->st;
-		car_map[ans->car_id]->time = ans->st;
+		car_map[ans->car_id]->time = ans->st;//同步更新车辆启动时间
 		ss >> c;
 		while (c != ')')
 		{
@@ -642,10 +641,11 @@ int main(int argc, char* argv[])
 	sort(ans_time.begin(), ans_time.end(), cmp);
 	for (int i = 0; i < ans_time.size(); ++i) {
 		CarPQ.push_back(car_map[ans_time[i]]);
-		if (i < 3)continue;//测试用
+		if (i < ans_time.size() - 1)continue;//测试用
 		auto *old = new deque<Car*>(CarPQ);
 		cout <<"CarPQ size :"<< CarPQ.size() << endl;
 		while (!judge()) {
+			cout << "find error!!!" << endl;
 			reset();
 			CarPQ = *old;
 			CarPQ.pop_back();
