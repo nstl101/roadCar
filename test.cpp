@@ -283,7 +283,7 @@ bool hasConflict(int curDirect, int oi, Cross * cross, int cross_id) {
 		if (ans->pi == ans->path.size() - 1)
 			continue;
 		int d = getOrder(cross, car);
-		if (d < curDirect)
+		if (d > curDirect)
 		{
 			return true;
 		}
