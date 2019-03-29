@@ -180,7 +180,7 @@ int getFirstWaitCar(int roadId, int ed)
 void updateRoadLine(RoadLine & roadline, int maxPos)
 {
 	auto road = road_map[roadline.fathRoad];
-	auto waitqueue = roadline.waitqueue;
+	auto &waitqueue = roadline.waitqueue;
 	while (waitqueue.size() != 0)
 	{
 		auto carId = waitqueue.front();
