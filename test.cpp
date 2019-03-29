@@ -81,7 +81,7 @@ bool driveAllCarJustOnRoadToEndState()
 					car->state = END;
 					/*肖添加*/
 					wait = false;
-					cout << "car_id" << car->id << " move from" << road.id << " : " << car->pos - speed << " to" << car->pos<<endl;
+					cout << "car_id" << car->id << " move from " << road.id << " : " << car->pos - speed << " to" << car->pos<<endl;
 				}
 			}
 		}
@@ -235,9 +235,9 @@ void goCross(Car * car, int roadToId, int roadlineid)
 	cout << "car_id" << car_id << " route" << car_map[car_id]->st;
 	for (int i = 0; i <= ans->pi; ++i)
 	{
-		cout << " -> " << ans->path[i] << " : " << roadlineid << ":" << car->pos;
+		cout << " -> " << ans->path[i] << " : " << roadlineid ;
 	}
-	cout << endl;
+	cout << " cur pos " << car->pos << endl;
 	// hasCarDrive = true;
 	// roadline.waitqueue.pop_front();
 }
@@ -262,9 +262,9 @@ void goCross(Car * car, int roadFromId, int roadToId, int roadlineid)
 	cout << "car_id"<< car_id<<" route"<< car_map[car_id]->st;
 	for (int i = 0; i <= ans->pi; ++i)
 	{
-		cout << " -> " << ans->path[i] << " : " << roadlineid <<":"<< car->pos;
+		cout << " -> " << ans->path[i] << " : " << roadlineid;
 	}
-	cout << endl;
+	cout <<" cur pos "<< car->pos << endl;
 	// hasCarDrive = true;
 	// roadline.waitqueue.pop_front();
 }
