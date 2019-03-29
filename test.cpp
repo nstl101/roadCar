@@ -127,9 +127,9 @@ int canPlace(int roadid, int st, int left_dist) //肖：增加left_dist用于判
 			{
 				return i;
 			}
-			else if (car_map[roadline.car_id.front()]->state == END) //寻找第一个终止状态的车道
+			else if (car_map[roadline.car_id.back()]->state == END) //寻找第一个终止状态的车道
 			{
-				auto car_id = roadline.car_id.front();
+				auto car_id = roadline.car_id.back();
 				auto ans = ans_map[car_id];
 				if (ans->pos > 1)
 				{
@@ -138,7 +138,8 @@ int canPlace(int roadid, int st, int left_dist) //肖：增加left_dist用于判
 			}
 			else //肖：如果第一个车道的状态不是终止且小于等于前行距离 继续等待
 			{
-				auto car_id = roadline.car_id.front();
+				cout << car_map[roadline.car_id.back()]->state << " state" << endl;
+				auto car_id = roadline.car_id.back();
 				auto ans = ans_map[car_id];
 				if (ans->pos > left_dist) {
 					return i;//肖：道路前车为等待状态，但当前车辆不会到达这么远的距离，可以进入
@@ -221,7 +222,7 @@ void goCross(Car * car, int roadToId, int roadlineid)
 	//肖：增加对car->pos的刷新与ans->pos保持同步
 	if (!roadline_next.car_id.empty())
 	{
-		ans->pos = min(ans->pos, ans_map[roadline_next.car_id.front()]->pos - 1);
+		ans->pos = min(ans->pos, ans_map[roadline_next.car_id.back()]->pos - 1);
 		car->pos = ans->pos;
 	}
 	roadline_next.car_id.push_back(car_id);
@@ -242,7 +243,7 @@ void goCross(Car * car, int roadFromId, int roadToId, int roadlineid)
 	//肖：增加对car->pos的刷新与ans->pos保持同步
 	if (!roadline_next.car_id.empty())
 	{
-		ans->pos = min(ans->pos, ans_map[roadline_next.car_id.front()]->pos - 1);
+		ans->pos = min(ans->pos, ans_map[roadline_next.car_id.back()]->pos - 1);
 		car->pos = ans->pos;
 	}
 	roadline_next.car_id.push_back(car_id);
@@ -308,6 +309,8 @@ bool driveAllWaitCar()
 						{
 							ans->pi = -1;
 							ans->pos = 0;
+							car_map[car_id]->pos = 0;
+							car_map[car_id]->state = END;
 							//这个车到达终点结束,将pi,pos置0.
 							roadline.waitqueue.pop_front();
 							roadline.car_id.pop_front();
@@ -366,19 +369,30 @@ bool driveAllWaitCar()
 
 bool driveCarInGarage(int now)
 {
-	while (!CarPQ.empty() && CarPQ.front()->time <= now)
+	int queueLen = CarPQ.size();
+	for (int i = 0; i < queueLen; ++i)
 	{
-		auto car = CarPQ.front();
-		int car_id = car->id;
-		auto ans = ans_map[car_id];
-		CarPQ.pop_front();
-		int road_id = ans->path[0];
-		int road_line_id;
-		if ((road_line_id = canPlace(road_id, car->st, min(road_map[road_id]->maxSpeed, car->maxSpeed))) != -1)
+		if (CarPQ.front()->time > now)
 		{
-			goCross(car, road_id, road_line_id);
+			CarPQ.push_back(CarPQ.front());
+			CarPQ.pop_front();
 		}
-		else return false;
+		else
+		{
+			cout << CarPQ.size() << " " << CarPQ.front()->id << " " << CarPQ.front()->time << endl;
+			auto car = CarPQ.front();
+			int car_id = car->id;
+			auto ans = ans_map[car_id];
+			CarPQ.pop_front();
+			int road_id = ans->path[0];
+			int road_line_id;
+			if ((road_line_id = canPlace(road_id, car->st, min(road_map[road_id]->maxSpeed, car->maxSpeed))) != -2)
+			{
+				cout << road_line_id << endl;
+				goCross(car, road_id, road_line_id);
+			}
+			else return false;
+		}
 	}
 	return true;
 }
@@ -469,7 +483,11 @@ bool judge()
 		{
 			break;
 		}
-		driveCarInGarage(now);
+		if (!driveCarInGarage(now))
+		{
+			cout << "can not place" << endl;
+			return false;
+		}
 		now++;
 	}
 	return true;
@@ -581,6 +599,7 @@ int main(int argc, char* argv[])
 		ss >> ans->car_id;
 		ss >> c;
 		ss >> ans->st;
+		car_map[ans->car_id]->time = ans->st;
 		ss >> c;
 		while (c != ')')
 		{
@@ -608,7 +627,9 @@ int main(int argc, char* argv[])
 	sort(ans_time.begin(), ans_time.end(), cmp);
 	for (int i = 0; i < ans_time.size(); ++i) {
 		CarPQ.push_back(car_map[ans_time[i]]);
+		if (i < 3)continue;//测试用
 		auto *old = new deque<Car*>(CarPQ);
+		cout << CarPQ.size() << endl;
 		while (!judge()) {
 			reset();
 			CarPQ = *old;
