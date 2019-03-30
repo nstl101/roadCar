@@ -25,7 +25,7 @@ enum
 
 class RoadLine
 {
-  public:
+public:
 	int len, st, ed;
 	list<int> waitqueue;
 	list<int> car_id;
@@ -34,7 +34,7 @@ class RoadLine
 
 class Road
 {
-  public:
+public:
 	vector<RoadLine> lines;
 	int id, len, maxSpeed, st, ed;
 	int cnt;
@@ -43,29 +43,29 @@ class Road
 
 class Car
 {
-  public:
+public:
 	int id, st, dst, maxSpeed, time;
 	int left_dist;
 	//增加left_dist用于路口调度判断
 	int pos = 0;
 	int state = 0;
-	bool operator < (const Car & rhs) const
+	bool operator < (const Car& rhs) const
 	{
 		if (time > rhs.time) return true;
 		return id > rhs.id;
 	}
 };
 
-auto cmp = [](const Car * lhs, const Car *rhs){
+auto cmp = [](const Car * lhs, const Car * rhs) {
 	return *lhs < *rhs;
 };
 
 // priority_queue<Car *, vector<Car *>, decltype(cmp)> CarPQ(cmp);
-deque<Car *> CarPQ;
+deque<Car*> CarPQ;
 
 class Cross
 {
-  public:
+public:
 	int id;
 	vector<int> RoadId, Order;
 
@@ -74,7 +74,7 @@ class Cross
 
 class AnsPath
 {
-  public:
+public:
 	int car_id, st;	//start_time
 	vector<int> path;
 	int pi = 0, pos = 0;
@@ -82,10 +82,10 @@ class AnsPath
 
 int g_time = 0;
 
-map<int, Car *> car_map;
-map<int, Road *> road_map;
-map<int, Cross *> cross_map;
-map<int, AnsPath *> ans_map;
+map<int, Car*> car_map;
+map<int, Road*> road_map;
+map<int, Cross*> cross_map;
+map<int, AnsPath*> ans_map;
 map<pair<int, int>, int> road_cross;
 
 vector<Car> cars;
